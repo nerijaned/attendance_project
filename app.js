@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const Student = require('./student.js');
+const Record = require('./record.js');
 
 const app = express();
 
@@ -97,6 +98,14 @@ mongoose.connect(url)
 .catch((err)=>{
     console.log(`Error connecting to the database: ${err}`)
 });
+
+app.get('/home', async (req, res) => {
+    const students = await Record.find({});
+    const maxAttendanceCount = Math.max(...students.map(student => student.attendanceCount));
+
+    res.render('attendance',{students, maxAttendanceCount});
+
+})
 
 const PORT = process.env.PORT || 3000;
 
