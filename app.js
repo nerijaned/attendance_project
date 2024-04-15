@@ -7,6 +7,9 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const Student = require('./student.js');
 const Record = require('./record.js');
+const student = require('./student.js');
+const session = require('express-session');
+const secretKey = 'my_secret_key';
 
 const app = express();
 
@@ -17,13 +20,46 @@ app.set('views','./views');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(cookieParser());
+app.use(session({
+    secret: secretKey,
+    resave: false,
+    saveUninitialized: false,
+  }))
+
+//high level middleware function for JWT authetication
+function authenticateToken(req, res, next){
+
+    const token = req.cookies.jwt;
+
+    if(token){
+
+
+      jwt.verify(token, secretKey, (err, decoded) => {
+
+          if(err) return res.status(401).send('Invalid Token');
+
+
+          req.userId = decoded;
+
+          next();
+      });
+    }
+}
 
 const url = `mongodb+srv://testUser:Password@cluster0.q5sujkp.mongodb.net/`;
 
+mongoose.connect(url)
+.then(() =>{
+    console.log('Connected to MongoDB Database');
+})
+.catch((err)=>{
+    console.log(`Error connecting to the database: ${err}`)
+});
+
 app.get('/',(req,res) => {
 
-    const email = req.body.email;
-    const password = req.body.password;
+   // const email = req.body.email;
+   // const password = req.body.password;
 
     res.render('login');
 });
@@ -32,7 +68,6 @@ app.get('/',(req,res) => {
 app.post('/', async (req,res) =>{
     const email = req.body.email;
     const password = req.body.password;
-    const secretKey = 'my_secret_key';
 
     //find user in the database by emamil
     const user = await Student.findOne({email});
@@ -45,6 +80,10 @@ app.post('/', async (req,res) =>{
 
     //creating and signing a JWT
     const unique = user._id.toString();
+    
+    //storing userId in the session
+    req.session.userId = user._id.toString();
+
     //create a jwt
     const token = jwt.sign(unique, secretKey);
     //stuff the token(jwt) niside the cookie
@@ -52,10 +91,15 @@ app.post('/', async (req,res) =>{
 
     bcrypt.compare(password, user.password, (err, result)=> {
         if(result){
-            res.render('attendance');
+            res.redirect('home');
         }else{
             res.send('Password incorrect lol');
         }
+    });
+
+    jwt.verify(token, secretKey, (err, decoded) => {
+        console.log(token);
+        console.log(decoded);
     });
 });
 
@@ -91,21 +135,84 @@ app.get('/register', (req, res) => {
     res.render('register');
 });
 
-mongoose.connect(url)
-.then(() =>{
-    console.log('Connected to MongoDB Database');
-})
-.catch((err)=>{
-    console.log(`Error connecting to the database: ${err}`)
+app.post('/addstudent', (req, res) => {
+    const student = new Record({
+        name: req.body.name,
+        email: req.body.email
+    });
+
+    student.save();
+    res.redirect('/home');
 });
 
-app.get('/home', async (req, res) => {
+app.post('/deletestudent', async (req, res) => {
+    const studentName = req.body.name;
+
+    try{
+        const result = await Record.deleteOne({name: studentName});
+
+        if(result.deletedCount === 0){
+            res.status(404).send('User does not exist. Try again');
+        } else {
+            res.redirect('/home');
+        }
+
+    }catch(error){
+        res.status(500).send("An unknown error has occured while deleting student records.");
+    }
+});
+
+
+
+app.get('/home', authenticateToken, async (req, res) => {
     const students = await Record.find({});
     const maxAttendanceCount = Math.max(...students.map(student => student.attendanceCount));
 
     res.render('attendance',{students, maxAttendanceCount});
 
-})
+});
+
+app.post('/update-student',async (req, res) => {
+    const attendanceDate = req.body.attendanceDate;
+    const length = req.body.attendance ? req.body.attendance.length: 0;
+
+    try{
+        for(let i=0; i < length; i++){
+            const studentId = req.body.attendance[i];
+            const result = await Record.findByIdAndUpdate(
+                studentId,
+                {
+                    $inc: {attendanceCount: 1},
+                    $set: {attendanceDate: new Date(attendanceDate)}
+                },
+                {new:true},
+            );
+            res.status(200).redirect('/home');
+        }
+    }catch(err){
+        res.status(500).send("An unknown error has occured while updating student records.");
+    }
+
+});
+
+app.post('/reset',  async (req, res) => {
+    try{
+        const students = await Record.find({});
+
+        for(let i=0; i < students.length; i++){
+            students[i].attendanceCount = 0;
+            await students[i].save();
+        }
+
+        res.redirect('/home');
+
+    }catch(error){
+        res.status(500).send("An unknown error has occured while updating student records.");
+
+    }
+    
+
+});
 
 const PORT = process.env.PORT || 3000;
 
