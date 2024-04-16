@@ -33,17 +33,15 @@ function authenticateToken(req, res, next){
 
     if(token){
 
-
       jwt.verify(token, secretKey, (err, decoded) => {
 
-          if(err) return res.status(401).send('Invalid Token');
-
-
+          if(err){ return res.status(401).send('Invalid Token');}
           req.userId = decoded;
-
           next();
-      });
-    }
+      })
+    }else {
+        res.status(401).render('401');
+      }
 }
 
 const url = `mongodb+srv://testUser:Password@cluster0.q5sujkp.mongodb.net/`;
@@ -147,9 +145,10 @@ app.post('/addstudent', (req, res) => {
 
 app.post('/deletestudent', async (req, res) => {
     const studentName = req.body.name;
+    const trimmedName = studentName.trim();
 
     try{
-        const result = await Record.deleteOne({name: studentName});
+        const result = await Record.deleteOne({name: trimmedName});
 
         if(result.deletedCount === 0){
             res.status(404).send('User does not exist. Try again');
@@ -187,8 +186,9 @@ app.post('/update-student',async (req, res) => {
                 },
                 {new:true},
             );
-            res.status(200).redirect('/home');
+            
         }
+        res.status(200).redirect('/home');
     }catch(err){
         res.status(500).send("An unknown error has occured while updating student records.");
     }
@@ -211,6 +211,49 @@ app.post('/reset',  async (req, res) => {
 
     }
     
+
+});
+
+app.post('/logout', (req, res) => {
+    
+    res.clearCookie('jwt');
+    req.session.userId = null;
+    req.session.destroy((err) => {
+        if(err){
+            res.status(500).send('Internal Server Error');
+        }else{
+            res.redirect('/');
+        }
+    });
+});
+
+app.get('/api/v2', async (req, res) => {
+  try {
+    const records = await Record.find({});
+    const formatted = JSON.stringify(records);
+    res.send(formatted);
+  } catch (error) {
+    console.error("Error fetching records:", error);
+    res.status(500).send("Error fetching records");
+  }
+});
+
+app.post('/api/v2', async (req, res) =>{
+    try{
+        const {name, email} = req.body;
+
+        //create the new student record
+        const student = new Record({
+            name: name,
+            email: email,
+        });
+
+        await student.save();
+        res.status(200).json({message: 'Student successfully created!', student: student});
+
+    }catch(error){
+        res.status(500).json({message: 'Error occurred while adding new student record'});
+    }
 
 });
 
