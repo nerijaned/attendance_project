@@ -1,0 +1,7 @@
+::1 - - [17/Apr/2024:16:20:00 +0000] "GET / HTTP/1.1" 200 832 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:23:10 +0000] "GET / HTTP/1.1" 304 - "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:23:12 +0000] "GET / HTTP/1.1" 304 - "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:23:27 +0000] "POST / HTTP/1.1" 302 52 "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:23:27 +0000] "GET /home HTTP/1.1" 304 - "http://localhost:3000/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:25:06 +0000] "POST /logout HTTP/1.1" 302 46 "http://localhost:3000/home" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+::1 - - [17/Apr/2024:16:25:06 +0000] "GET / HTTP/1.1" 200 832 "http://localhost:3000/home" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

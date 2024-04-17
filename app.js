@@ -9,6 +9,13 @@ const Student = require('./student.js');
 const Record = require('./record.js');
 const student = require('./student.js');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
+const YAML = require('yamljs');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = YAML.load('./swagger.yaml'); //Load our Swagger YAML file
+const morgan = require('morgan');
+const path = require('path');
+const fs = require('fs');
 const secretKey = 'my_secret_key';
 
 const app = express();
@@ -24,7 +31,15 @@ app.use(session({
     secret: secretKey,
     resave: false,
     saveUninitialized: false,
-  }))
+  }));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// create a write stream (in append mode)
+var accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
+ 
+// setup the logger
+app.use(morgan('combined', { stream: accessLogStream }));
+
 
 //high level middleware function for JWT authetication
 function authenticateToken(req, res, next){
@@ -43,6 +58,14 @@ function authenticateToken(req, res, next){
         res.status(401).render('401');
       }
 }
+
+//rate limit configuration
+const apiLimiter = rateLimit({
+    WindowsMS: 1 * 60 * 1000,
+    max: 15,
+    standardHeaders: true,
+    legacyHeaders: false
+})
 
 const url = `mongodb+srv://testUser:Password@cluster0.q5sujkp.mongodb.net/`;
 
@@ -85,7 +108,7 @@ app.post('/', async (req,res) =>{
     //create a jwt
     const token = jwt.sign(unique, secretKey);
     //stuff the token(jwt) niside the cookie
-    res.cookie('jwt', token, {maxAge: 5*60*1000, httpOnly: true});
+    res.cookie('jwt', token, {maxAge: 5*60*3000, httpOnly: true});
 
     bcrypt.compare(password, user.password, (err, result)=> {
         if(result){
@@ -227,7 +250,7 @@ app.post('/logout', (req, res) => {
     });
 });
 
-app.get('/api/v2', async (req, res) => {
+app.get('/api/v2', apiLimiter, async (req, res) => {
   try {
     const records = await Record.find({});
     const formatted = JSON.stringify(records);
